@@ -15,7 +15,8 @@ class KwhModel extends Model
         'keterangan', 'arus', 'tegangan', 'cosphi', 'constanta',
         'count', 'duration', 'blink_data', 'selected_blink',
         'p1_kw', 'p2_kw', 'error_percent', 'class_meter', 'status_final',
-        'photos', 'is_auto', 'idle_timeout', 'created_at'
+        'photos', 'user_id', 
+        'created_at', 'updated_at'
     ];
     
     protected $useTimestamps = true;

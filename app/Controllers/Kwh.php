@@ -13,102 +13,133 @@ class Kwh extends BaseController
     {
         $this->kwhModel = new KwhModel();
         helper(['form', 'url', 'text']);
+        
+        // Check authentication (kecuali untuk viewPhoto)
+        $uri = service('uri');
+        if ($uri->getSegment(1) !== 'kwh' || $uri->getSegment(2) !== 'viewPhoto') {
+            if (!session()->get('isLoggedIn')) {
+                return redirect()->to(base_url('auth/login'));
+            }
+        }
     }
     
     public function index()
     {
+        $userId = session()->get('user_id');
+        $role = session()->get('role');
+        
+        // Get data berdasarkan role
+        if ($role === 'admin') {
+            $logs = $this->kwhModel->select('kwh_data.*, users.nama as operator_nama, users.unit_kerja')
+                ->join('users', 'users.id = kwh_data.user_id', 'left')
+                ->orderBy('kwh_data.created_at', 'DESC')
+                ->findAll();
+        } else {
+            $logs = $this->kwhModel->where('user_id', $userId)
+                ->orderBy('created_at', 'DESC')
+                ->findAll();
+        }
+        
         $data = [
             'title' => 'KWH Error Calculator',
-            'logs' => $this->kwhModel->orderBy('created_at', 'DESC')->findAll()
+            'logs' => $logs,
+            'user_role' => $role,
+            'user_nama' => session()->get('nama')
         ];
         
         return view('kwh/index', $data);
     }
     
     public function save()
-{
-    // Validation
-    $validation = \Config\Services::validation();
-    $validation->setRules([
-        'keterangan' => 'required|min_length[3]',
-        'arus' => 'required|numeric',
-        'constanta' => 'required|numeric',
-        'class_meter' => 'required' // HAPUS in_list validation
-    ]);
-    
-    if (!$validation->withRequest($this->request)->run()) {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', implode(', ', $validation->getErrors()));
-    }
-    
-    // Get POST data
-    $post = $this->request->getPost();
-    
-    // Manual validation untuk class meter
-    $classMeter = $post['class_meter'];
-    $allowedClasses = ['1.0', '0.5', '0.2', '1', '0.5', '0.2']; // Support both string and float
-    
-    if (!in_array($classMeter, $allowedClasses)) {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Kelas meter harus 1.0, 0.5, atau 0.2');
-    }
-    
-    // Convert to float
-    $classMeter = (float)$classMeter;
-    
-    // Handle photo uploads
-    $photoNames = [];
-    $photos = $this->request->getFiles('photos');
-    
-    if ($photos && !empty($photos['photos'])) {
-        foreach ($photos['photos'] as $photo) {
-            if ($photo->isValid() && !$photo->hasMoved()) {
-                $newName = $photo->getRandomName();
-                $photo->move(WRITEPATH . 'uploads/kwh', $newName);
-                $photoNames[] = $newName;
+    {
+        // Validation
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'keterangan' => 'required|min_length[3]',
+            'arus' => 'required|numeric',
+            'constanta' => 'required|numeric',
+            'class_meter' => 'required'
+        ]);
+        
+        if (!$validation->withRequest($this->request)->run()) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', implode(', ', $validation->getErrors()));
+        }
+        
+        // Get POST data
+        $post = $this->request->getPost();
+        
+        // Handle class meter validation
+        $classMeterValue = $post['class_meter'];
+        $allowedClasses = ['1.0', '0.5', '0.2', '1', '0.5', '0.2'];
+        $classMeterStr = (string)$classMeterValue;
+        $validClass = false;
+        
+        foreach ($allowedClasses as $allowed) {
+            if ((string)$allowed === $classMeterStr) {
+                $validClass = true;
+                break;
             }
         }
+        
+        if (!$validClass) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Kelas meter harus 1.0, 0.5, atau 0.2');
+        }
+        
+        $classMeter = (float)$classMeterValue;
+        
+        // Handle photo uploads
+        $photoNames = [];
+        $photos = $this->request->getFiles('photos');
+        
+        if ($photos && !empty($photos['photos'])) {
+            foreach ($photos['photos'] as $photo) {
+                if ($photo->isValid() && !$photo->hasMoved()) {
+                    $newName = $photo->getRandomName();
+                    $photo->move(WRITEPATH . 'uploads/kwh', $newName);
+                    $photoNames[] = $newName;
+                }
+            }
+        }
+        
+        // Calculate values
+        $errorPercent = $this->calculateError($post);
+        $statusFinal = $this->determineFinalStatus($errorPercent, $classMeter);
+        
+        // Prepare data dengan user_id
+        $data = [
+            'keterangan' => $post['keterangan'],
+            'arus' => $post['arus'],
+            'tegangan' => $post['tegangan'] ?? 220,
+            'cosphi' => $post['cosphi'] ?? 0.85,
+            'constanta' => $post['constanta'],
+            'count' => $post['count'] ?? 0,
+            'duration' => $post['duration'] ?? 0,
+            'blink_data' => $post['blink_data'] ?? '[]',
+            'selected_blink' => $post['selected_blink'] ?? 1,
+            'class_meter' => $classMeter,
+            'p1_kw' => $this->calculateP1($post),
+            'p2_kw' => $this->calculateP2($post),
+            'error_percent' => $errorPercent,
+            'status_final' => $statusFinal,
+            'photos' => json_encode($photoNames),
+            'user_id' => session()->get('user_id'), // TAMBAH INI
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+        
+        // Save to database
+        if ($this->kwhModel->insert($data)) {
+            return redirect()->to(base_url('kwh'))
+                ->with('success', 'Data berhasil disimpan! Status: ' . $statusFinal);
+        } else {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Gagal menyimpan data ke database');
+        }
     }
-    
-    // Calculate values
-    $errorPercent = $this->calculateError($post);
-    $classMeter = (float)$post['class_meter'];
-    
-    // Determine final status based on new logic
-    $statusFinal = $this->determineFinalStatus($errorPercent, $classMeter);
-    
-    // Prepare data
-    $data = [
-        'keterangan' => $post['keterangan'],
-        'arus' => $post['arus'],
-        'tegangan' => $post['tegangan'] ?? 220,
-        'cosphi' => $post['cosphi'] ?? 0.85,
-        'constanta' => $post['constanta'],
-        'count' => $post['count'] ?? 0,
-        'duration' => $post['duration'] ?? 0,
-        'blink_data' => $post['blink_data'] ?? '[]',
-        'selected_blink' => $post['selected_blink'] ?? 1,
-        'class_meter' => $classMeter,
-        'p1_kw' => $this->calculateP1($post),
-        'p2_kw' => $this->calculateP2($post),
-        'error_percent' => $errorPercent,
-        'status_final' => $statusFinal,
-        'photos' => json_encode($photoNames),
-        'created_at' => date('Y-m-d H:i:s')
-    ];
-    
-    // Save to database
-    if ($this->kwhModel->insert($data)) {
-        return redirect()->to(base_url())
-            ->with('success', 'Data berhasil disimpan! Status: ' . $statusFinal);
-    } else {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Gagal menyimpan data ke database');
-    }
-}
 
 private function determineFinalStatus($errorPercent, $classMeter)
 {

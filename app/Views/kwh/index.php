@@ -276,15 +276,24 @@
         <?php endif; ?>
     </div>
 
-    <!-- Header -->
-    <div class="app-container pt-3">
-        <div class="text-center text-white mb-2">
-            <h1 class="h5 fw-bold mb-1">
-                <i class="bi bi-lightning-charge-fill"></i> KWH ERROR CALCULATOR
-            </h1>
-            <p class="small opacity-75 mb-0">PLN - Perhitungan Error Meter Listrik</p>
-        </div>
+    <!-- Di bagian atas, tambahkan info user: -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0">
+            <i class="bi bi-lightning-charge-fill text-warning me-2"></i>
+            KWH Error Calculator
+        </h4>
+        <small class="text-muted">
+            Operator: <?= $user_nama ?> | 
+            Role: <?= strtoupper($user_role) ?>
+        </small>
     </div>
+    <div>
+        <a href="<?= base_url('dashboard') ?>" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+        </a>
+    </div>
+</div>
 
     <!-- Main Content -->
     <div class="app-container">
