@@ -58,7 +58,25 @@ class UserModel extends Model
     }
     return $data;
 }
+// Di dalam class UserModel, tambahkan:
+public function updateLastTracked($userId)
+{
+    return $this->update($userId, [
+        'last_tracked' => date('Y-m-d H:i:s')
+    ]);
+}
 
+public function getTrackingToken($userId)
+{
+    $user = $this->find($userId);
+    return $user ? $user['tracking_token'] : null;
+}
+
+public function validateTrackingToken($userId, $token)
+{
+    $user = $this->find($userId);
+    return $user && $user['tracking_token'] === $token;
+}
 // Tambah method untuk cek hash
 public function isPasswordHashed($password)
 {

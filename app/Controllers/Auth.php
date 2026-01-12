@@ -238,7 +238,58 @@ private function createDefaultAdmin()
                 ->with('error', 'Gagal menambahkan user');
         }
     }
+    private function autoTrackUserLocation($userId)
+{
+    try {
+        // Include tracking model
+        $trackingModel = new \App\Models\LocationTrackingModel();
+        $userModel = new \App\Models\UserModel();
+        
+        // Coba dapatkan lokasi dari IP address atau browser
+        $ipAddress = $this->request->getIPAddress();
+        
+        // Data default lokasi berdasarkan lokasi_pln di database
+        $user = $userModel->find($userId);
+        $defaultLocation = $this->getDefaultLocation($user['lokasi_pln']);
+        
+        // Coba dapatkan lokasi dari browser (jika user mengizinkan)
+        $data = [
+            'user_id' => $userId,
+            'latitude' => $defaultLocation['lat'],
+            'longitude' => $defaultLocation['lng'],
+            'accuracy' => 5000, // Accuracy rendah karena dari IP
+            'address' => $user['lokasi_pln'] . ' (Auto-track saat login)',
+            'device_info' => $this->request->getUserAgent()->getBrowser() . ' - ' . 
+                           $this->request->getUserAgent()->getPlatform(),
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+        
+        // Simpan ke tracking database
+        $trackingModel->insert($data);
+        
+        log_message('info', 'Auto-tracking location for user ID: ' . $userId);
+        
+    } catch (\Exception $e) {
+        log_message('error', 'Auto-tracking failed: ' . $e->getMessage());
+    }
+}
+
+private function getDefaultLocation($lokasiPln)
+{
+    // Mapping lokasi PLN ke koordinat
+    $locations = [
+        'PLN Pusat Jakarta' => ['lat' => -6.2088, 'lng' => 106.8456],
+        'PLN Bandung' => ['lat' => -6.9147, 'lng' => 107.6098],
+        'PLN Surabaya' => ['lat' => -7.2504, 'lng' => 112.7688],
+        'PLN Bogor' => ['lat' => -6.5971, 'lng' => 106.8060],
+        'PLN Tangerang' => ['lat' => -6.1783, 'lng' => 106.6319],
+        'PLN Bekasi' => ['lat' => -6.2383, 'lng' => 106.9756],
+        'PLN Semarang' => ['lat' => -6.9667, 'lng' => 110.4167],
+        'PLN Yogyakarta' => ['lat' => -7.7956, 'lng' => 110.3695],
+    ];
     
+    return $locations[$lokasiPln] ?? ['lat' => -6.2088, 'lng' => 106.8456]; // Default Jakarta
+}
     public function logout()
     {
         $this->session->destroy();

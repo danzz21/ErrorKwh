@@ -1,81 +1,129 @@
-<?= $this->extend('templates/header') ?>
+<?= $this->extend('layout/template') ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid">
-    <!-- Welcome Header -->
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-speedometer2 text-primary me-2"></i>
+                Dashboard
+            </h2>
+            <p class="text-muted mb-0">
+                Selamat datang, <strong><?= $user_nama ?></strong> | Role: <?= strtoupper($user_role) ?>
+            </p>
+        </div>
+        <div>
+            <span class="badge bg-primary"><?= date('l, d F Y') ?></span>
+            <span class="badge bg-success"><?= date('H:i:s') ?></span>
+        </div>
+    </div>
+    
+    <?php if ($user_role === 'admin'): ?>
+    <!-- ADMIN DASHBOARD -->
     <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
+        <!-- Stat Cards -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary border-4 shadow h-100 py-2">
                 <div class="card-body">
-                    <div class="row align-items-center">
-                        <div class="col-md-8">
-                            <h3 class="mb-2">
-                                <i class="bi bi-speedometer2 text-primary me-2"></i>
-                                Selamat Datang, <?= $user['nama'] ?>!
-                            </h3>
-                            <p class="text-muted mb-0">
-                                <i class="bi bi-building me-1"></i> <?= $user['unit_kerja'] ?> | 
-                                <i class="bi bi-person-badge me-1 ms-2"></i> Role: <?= strtoupper($user['role']) ?>
-                            </p>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <div class="badge bg-primary p-2">
-                                <i class="bi bi-calendar-check me-1"></i>
-                                <?= date('d F Y') ?>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                                Total Users
                             </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                <?= number_format($total_users) ?>
+                            </div>
+                            <div class="mt-2 mb-0 text-muted">
+                                <span class="text-success me-2">
+                                    <i class="bi bi-person-check me-1"></i>
+                                    <?= number_format($active_users) ?> aktif
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-people fa-2x text-gray-300"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
-            <div class="stat-card">
-                <div class="stat-icon text-primary">
-                    <i class="bi bi-lightning-charge-fill"></i>
-                </div>
-                <div class="stat-number"><?= $stats['total_data'] ?></div>
-                <div class="stat-label">Total Pengukuran</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="bi bi-arrow-up-circle text-success me-1"></i>
-                        Total semua data KWH
-                    </small>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-success border-4 shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                                KWH Data
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                <?= number_format($total_kwh_data) ?>
+                            </div>
+                            <div class="mt-2 mb-0 text-muted">
+                                <span class="text-success me-2">
+                                    <i class="bi bi-calendar-day me-1"></i>
+                                    <?= number_format($today_kwh_data) ?> hari ini
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-lightning-charge fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-4 mb-3">
-            <div class="stat-card">
-                <div class="stat-icon text-success">
-                    <i class="bi bi-person-fill"></i>
-                </div>
-                <div class="stat-number"><?= $stats['total_users'] ?></div>
-                <div class="stat-label">Total User</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="bi bi-people-fill text-info me-1"></i>
-                        User terdaftar di sistem
-                    </small>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-info border-4 shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-info text-uppercase mb-1">
+                                Online Now
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                <?= number_format($online_users) ?>
+                            </div>
+                            <div class="mt-2 mb-0 text-muted">
+                                <span class="text-success me-2">
+                                    <i class="bi bi-wifi me-1"></i>
+                                    Live Tracking
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-geo-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="col-md-4 mb-3">
-            <div class="stat-card">
-                <div class="stat-icon text-warning">
-                    <i class="bi bi-file-earmark-text-fill"></i>
-                </div>
-                <div class="stat-number"><?= $stats['my_data'] ?></div>
-                <div class="stat-label">Pengukuran Saya</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="bi bi-person-check text-warning me-1"></i>
-                        Data yang Anda input
-                    </small>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-warning border-4 shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col me-2">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                                User Distribution
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">
+                                <?= count($user_stats) ?> Roles
+                            </div>
+                            <div class="mt-2 mb-0 text-muted">
+                                <?php foreach($user_stats as $stat): ?>
+                                    <span class="badge bg-secondary me-1">
+                                        <?= $stat['role'] ?>: <?= $stat['count'] ?>
+                                    </span>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-pie-chart fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -84,39 +132,30 @@
     <!-- Quick Actions -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-lightning-charge me-2"></i> Quick Actions
-                    </h5>
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-lightning-charge me-2"></i> Quick Actions</h6>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3 col-6 mb-3">
-                            <a href="<?= base_url('kwh') ?>" class="btn btn-primary w-100 py-3">
-                                <i class="bi bi-plus-circle-fill me-2" style="font-size: 1.2rem;"></i>
-                                <div class="mt-2">Input Data Baru</div>
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="<?= base_url('users') ?>" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-people me-2"></i> Manage Users
                             </a>
                         </div>
-                        
-                        <div class="col-md-3 col-6 mb-3">
-                            <a href="<?= base_url('kwh#riwayat') ?>" class="btn btn-success w-100 py-3">
-                                <i class="bi bi-clock-history me-2" style="font-size: 1.2rem;"></i>
-                                <div class="mt-2">Lihat Riwayat</div>
+                        <div class="col-md-3">
+                            <a href="<?= base_url('kwh/all') ?>" class="btn btn-outline-success w-100">
+                                <i class="bi bi-database me-2"></i> View All Data
                             </a>
                         </div>
-                        
-                        <div class="col-md-3 col-6 mb-3">
-                            <a href="<?= base_url('export/pdf') ?>" target="_blank" class="btn btn-danger w-100 py-3">
-                                <i class="bi bi-file-pdf me-2" style="font-size: 1.2rem;"></i>
-                                <div class="mt-2">Export PDF</div>
+                        <div class="col-md-3">
+                            <a href="<?= base_url('tracking') ?>" class="btn btn-outline-info w-100">
+                                <i class="bi bi-geo-alt me-2"></i> Live Tracking
                             </a>
                         </div>
-                        
-                        <div class="col-md-3 col-6 mb-3">
-                            <a href="<?= base_url('auth/profile') ?>" class="btn btn-info w-100 py-3">
-                                <i class="bi bi-person-circle me-2" style="font-size: 1.2rem;"></i>
-                                <div class="mt-2">Edit Profile</div>
+                        <div class="col-md-3">
+                            <a href="<?= base_url('export/all') ?>" class="btn btn-outline-warning w-100">
+                                <i class="bi bi-file-excel me-2"></i> Export Data
                             </a>
                         </div>
                     </div>
@@ -125,83 +164,213 @@
         </div>
     </div>
     
-    <!-- Recent Activities -->
+    <!-- Two Column Layout -->
     <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-activity me-2"></i> Aktivitas Terbaru
-                    </h5>
-                    <a href="<?= base_url('kwh') ?>" class="btn btn-sm btn-outline-primary">
-                        Lihat Semua
-                    </a>
+        <!-- Recent KWH Activities -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i> Recent KWH Activities</h6>
+                    <a href="<?= base_url('kwh/all') ?>" class="btn btn-sm btn-light">View All</a>
                 </div>
                 <div class="card-body">
-                    <?php if (!empty($recent_data)): ?>
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>User</th>
+                                    <th>Location</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($recent_kwh)): ?>
+                                    <?php foreach($recent_kwh as $activity): ?>
                                     <tr>
-                                        <th>Waktu</th>
-                                        <th>Lokasi</th>
-                                        <th>Arus</th>
-                                        <th>Error</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($recent_data as $data): ?>
-                                    <tr>
-                                        <td><?= date('H:i', strtotime($data['created_at'])) ?></td>
-                                        <td><?= substr($data['keterangan'], 0, 30) ?><?= strlen($data['keterangan']) > 30 ? '...' : '' ?></td>
-                                        <td><?= number_format($data['arus'], 2) ?> A</td>
+                                        <td><?= date('H:i', strtotime($activity['created_at'])) ?></td>
                                         <td>
-                                            <?php if (isset($data['error_percent'])): ?>
-                                                <span class="badge bg-<?= 
-                                                    abs($data['error_percent']) <= 2 ? 'success' : 
-                                                    (abs($data['error_percent']) <= 5 ? 'warning' : 'danger')
-                                                ?>">
-                                                    <?= number_format($data['error_percent'], 2) ?>%
-                                                </span>
+                                            <small><?= $activity['nama'] ?></small>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted"><?= substr($activity['keterangan'], 0, 20) ?>...</small>
+                                        </td>
+                                        <td>
+                                            <?php if ($activity['status_final'] === 'BAIK'): ?>
+                                                <span class="badge bg-success">BAIK</span>
+                                            <?php elseif ($activity['status_final'] === 'TIDAK STABIL'): ?>
+                                                <span class="badge bg-warning">TIDAK STABIL</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-danger">BURUK</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if (isset($data['status_final'])): ?>
-                                                <?php
-                                                if ($data['status_final'] === 'BAIK') {
-                                                    echo '<span class="badge bg-success">BAIK</span>';
-                                                } elseif ($data['status_final'] === 'TIDAK STABIL') {
-                                                    echo '<span class="badge bg-warning">TIDAK STABIL</span>';
-                                                } elseif ($data['status_final'] === 'BURUK') {
-                                                    echo '<span class="badge bg-danger">BURUK</span>';
-                                                }
-                                                ?>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <a href="<?= base_url('export/pdf/' . $data['id']) ?>" 
-                                               class="btn btn-sm btn-outline-danger"
-                                               target="_blank"
-                                               title="Export PDF">
-                                                <i class="bi bi-file-pdf"></i>
+                                            <a href="<?= base_url('kwh/view/' . $activity['id']) ?>" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
                                             </a>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-3">
+                                            <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+                                            No recent activities
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Locations -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i> Recent Locations</h6>
+                    <a href="<?= base_url('tracking') ?>" class="btn btn-sm btn-light">View Map</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>User</th>
+                                    <th>Location</th>
+                                    <th>Accuracy</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($recent_locations)): ?>
+                                    <?php foreach($recent_locations as $location): ?>
+                                    <tr>
+                                        <td><?= date('H:i', strtotime($location['timestamp'])) ?></td>
+                                        <td>
+                                            <small><?= $location['nama'] ?></small><br>
+                                            <small class="text-muted"><?= $location['nip'] ?></small>
+                                        </td>
+                                        <td>
+                                            <?php if ($location['address']): ?>
+                                                <small><?= substr($location['address'], 0, 30) ?>...</small>
+                                            <?php else: ?>
+                                                <small class="text-muted">
+                                                    <?= number_format($location['latitude'], 4) ?>, 
+                                                    <?= number_format($location['longitude'], 4) ?>
+                                                </small>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($location['accuracy']): ?>
+                                                <span class="badge bg-info"><?= round($location['accuracy']) ?>m</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">N/A</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <a href="<?= base_url('tracking/history/' . $location['user_id']) ?>" 
+                                               class="btn btn-sm btn-outline-info">
+                                                <i class="bi bi-history"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-3">
+                                            <i class="bi bi-geo fs-4 d-block mb-2"></i>
+                                            No location data
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <?php else: ?>
+    <!-- USER DASHBOARD -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-person-circle me-2"></i> My Stats</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="bi bi-lightning-charge text-warning" style="font-size: 3rem;"></i>
+                        <h2 class="mt-3"><?= number_format($my_kwh_data) ?></h2>
+                        <p class="text-muted">Total KWH Measurements</p>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <h4 class="text-success"><?= number_format($today_kwh_data) ?></h4>
+                                <small class="text-muted">Today</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <h4 class="text-info">
+                                    <?= $last_location ? 'Online' : 'Offline' ?>
+                                </h4>
+                                <small class="text-muted">Status</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i> My Recent Activities</h6>
+                    <a href="<?= base_url('kwh') ?>" class="btn btn-sm btn-light">View All</a>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($recent_activities)): ?>
+                        <div class="list-group">
+                            <?php foreach($recent_activities as $activity): ?>
+                            <a href="#" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">
+                                        <i class="bi bi-geo-alt me-2"></i>
+                                        <?= $activity['keterangan'] ?>
+                                    </h6>
+                                    <small><?= date('H:i', strtotime($activity['created_at'])) ?></small>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        Arus: <?= $activity['arus'] ?>A | 
+                                        Error: <?= number_format($activity['error_percent'], 2) ?>%
+                                    </small>
+                                    <?php if ($activity['status_final'] === 'BAIK'): ?>
+                                        <span class="badge bg-success">BAIK</span>
+                                    <?php elseif ($activity['status_final'] === 'TIDAK STABIL'): ?>
+                                        <span class="badge bg-warning">TIDAK STABIL</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-danger">BURUK</span>
+                                    <?php endif; ?>
+                                </div>
+                            </a>
+                            <?php endforeach; ?>
                         </div>
                     <?php else: ?>
-                        <div class="text-center py-4 text-muted">
+                        <div class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                            Belum ada data pengukuran
-                            <div class="mt-3">
-                                <a href="<?= base_url('kwh') ?>" class="btn btn-primary">
-                                    <i class="bi bi-plus-circle me-2"></i> Input Data Pertama
-                                </a>
-                            </div>
+                            <p>No recent activities</p>
+                            <a href="<?= base_url('kwh') ?>" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i> Start Measurement
+                            </a>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -209,115 +378,59 @@
         </div>
     </div>
     
-    <!-- System Info -->
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-info-circle me-2"></i> Informasi Sistem
-                    </h5>
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-geo-alt me-2"></i> Quick Actions</h6>
                 </div>
                 <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span><i class="bi bi-calendar3 me-2 text-primary"></i> Versi Sistem</span>
-                            <span class="badge bg-primary">v1.0.0</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span><i class="bi bi-database me-2 text-success"></i> Database</span>
-                            <span>MySQL</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span><i class="bi bi-code-slash me-2 text-warning"></i> Framework</span>
-                            <span>CodeIgniter 4</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <span><i class="bi bi-shield-check me-2 text-danger"></i> Status</span>
-                            <span class="badge bg-success">Online</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-bell me-2"></i> Notifikasi
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        <strong>Update Sistem:</strong> Fitur login dan tracking user telah ditambahkan.
-                    </div>
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        <strong>Sistem Aktif:</strong> Semua fungsi berjalan normal.
-                    </div>
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <strong>Pengingat:</strong> Pastikan data yang diinput sudah valid.
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <a href="<?= base_url('kwh') ?>" class="btn btn-primary w-100">
+                                <i class="bi bi-lightning-charge me-2"></i> New Measurement
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="<?= base_url('kwh#riwayat') ?>" class="btn btn-success w-100">
+                                <i class="bi bi-clock-history me-2"></i> My History
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="<?= base_url('tracking/mobile') ?>" class="btn btn-info w-100">
+                                <i class="bi bi-phone me-2"></i> Start Tracking
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="<?= base_url('auth/profile') ?>" class="btn btn-warning w-100">
+                                <i class="bi bi-person-circle me-2"></i> My Profile
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
-<style>
-.stat-card {
-    background: white;
-    border-radius: 10px;
-    padding: 25px;
-    text-align: center;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.08);
-    transition: all 0.3s ease;
-    border: 1px solid #e9ecef;
-    height: 100%;
-}
-
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.12);
-}
-
-.stat-icon {
-    font-size: 2.5rem;
-    margin-bottom: 15px;
-    opacity: 0.9;
-}
-
-.stat-number {
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: #0054a6;
-    margin-bottom: 5px;
-}
-
-.stat-label {
-    color: #6c757d;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.btn-action {
-    border-radius: 10px;
-    padding: 20px 15px;
-    font-weight: 500;
-    transition: all 0.3s;
-}
-
-.btn-action:hover {
-    transform: scale(1.05);
-}
-
-.list-group-item {
-    border: none;
-    padding: 12px 0;
-}
-</style>
+<!-- Auto Refresh Script -->
+<script>
+    // Auto refresh dashboard every 30 seconds
+    setTimeout(() => {
+        window.location.reload();
+    }, 30000);
+    
+    // Update time every second
+    function updateTime() {
+        const now = new Date();
+        const timeElement = document.querySelector('.badge.bg-success');
+        if (timeElement) {
+            const timeString = now.toLocaleTimeString('id-ID');
+            timeElement.textContent = timeString;
+        }
+    }
+    
+    setInterval(updateTime, 1000);
+</script>
 <?= $this->endSection() ?>

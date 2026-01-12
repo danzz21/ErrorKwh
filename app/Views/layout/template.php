@@ -170,84 +170,142 @@ $userRole = session()->get('role');
     </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-pln navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="<?= base_url('dashboard') ?>">
-                <span class="pln-logo me-2">PLN</span>
-                KWH Error Calculator
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
+   <!-- Di bagian navbar, update menu: -->
+<nav class="navbar navbar-expand-lg navbar-pln navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="<?= base_url('dashboard') ?>">
+            <span class="pln-logo me-2">PLN</span>
+            KWH Error Calculator
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Left Menu -->
+            <ul class="navbar-nav me-auto">
                 <?php if (session()->get('isLoggedIn')): ?>
-                <!-- Navigation Menu -->
-                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link <?= current_url() == base_url('dashboard') ? 'active' : '' ?>" 
                            href="<?= base_url('dashboard') ?>">
                             <i class="bi bi-speedometer2 me-1"></i> Dashboard
                         </a>
                     </li>
+                    
                     <li class="nav-item">
                         <a class="nav-link <?= strpos(current_url(), base_url('kwh')) !== false ? 'active' : '' ?>" 
                            href="<?= base_url('kwh') ?>">
                             <i class="bi bi-lightning-charge me-1"></i> KWH Calculator
                         </a>
                     </li>
-                    <?php if (session()->get('role') === 'admin'): ?>
+                    
                     <li class="nav-item">
-                        <a class="nav-link <?= current_url() == base_url('users') ? 'active' : '' ?>" 
-                           href="<?= base_url('users') ?>">
-                            <i class="bi bi-people me-1"></i> User Management
+                        <a class="nav-link <?= strpos(current_url(), base_url('tracking')) !== false ? 'active' : '' ?>" 
+                           href="<?= base_url('tracking/leaflet') ?>">
+                            <i class="bi bi-geo-alt me-1"></i> Live Tracking
                         </a>
                     </li>
+                    
+                    <!-- ADMIN MENU - Dropdown -->
+                    <?php if (session()->get('role') === 'admin'): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear me-1"></i> Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('users') ?>">
+                                    <i class="bi bi-people me-2"></i> User Management
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('kwh/all') ?>">
+                                    <i class="bi bi-database me-2"></i> All KWH Data
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('tracking') ?>">
+                                    <i class="bi bi-map me-2"></i> Tracking Management
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('reports') ?>">
+                                    <i class="bi bi-graph-up me-2"></i> Reports
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('export/all') ?>">
+                                    <i class="bi bi-file-excel me-2"></i> Export All Data
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
                     <?php endif; ?>
-                </ul>
+                    
+                    <!-- USER MENU -->
+                    <li class="nav-item">
+                        <a class="nav-link <?= current_url() == base_url('auth/profile') ? 'active' : '' ?>" 
+                           href="<?= base_url('auth/profile') ?>">
+                            <i class="bi bi-person-circle me-1"></i> Profile
+                        </a>
+                    </li>
                 <?php endif; ?>
-                
-                <!-- User Dropdown -->
-                <ul class="navbar-nav ms-auto">
-                    <?php if (session()->get('isLoggedIn')): ?>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
-                                <?php if (session()->get('foto')): ?>
-                                    <img src="<?= base_url('uploads/users/' . session()->get('foto')) ?>" 
-                                         class="user-avatar me-2" 
-                                         alt="User Photo">
-                                <?php else: ?>
-                                    <div class="user-avatar me-2 bg-light d-flex align-items-center justify-content-center">
-                                        <i class="bi bi-person-fill text-secondary"></i>
-                                    </div>
-                                <?php endif; ?>
-                                <div>
-                                    <div class="fw-bold"><?= session()->get('nama') ?></div>
-                                    <small class="text-light"><?= session()->get('role') ?></small>
+            </ul>
+            
+            <!-- Right User Dropdown -->
+            <ul class="navbar-nav ms-auto">
+                <?php if (session()->get('isLoggedIn')): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+                            <?php if (session()->get('foto')): ?>
+                                <img src="<?= base_url('uploads/users/' . session()->get('foto')) ?>" 
+                                     class="user-avatar me-2" 
+                                     alt="User Photo">
+                            <?php else: ?>
+                                <div class="user-avatar me-2 bg-light d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-person-fill text-secondary"></i>
                                 </div>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="<?= base_url('auth/profile') ?>">
-                                    <i class="bi bi-person-circle me-2"></i>Profile
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <?php if (session()->get('role') === 'admin'): ?>
-                                    <li><a class="dropdown-item" href="<?= base_url('export/pdf') ?>" target="_blank">
-                                        <i class="bi bi-file-pdf me-2"></i>Laporan PDF
-                                    </a></li>
-                                <?php endif; ?>
-                                <li><a class="dropdown-item text-danger" href="<?= base_url('auth/logout') ?>">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
-                                </a></li>
-                            </ul>
-                        </li>
-                    <?php endif; ?>
-                </ul>
-            </div>
+                            <?php endif; ?>
+                            <div>
+                                <div class="fw-bold"><?= session()->get('nama') ?></div>
+                                <small class="text-light"><?= session()->get('role') ?> | 
+                                    <?= session()->get('unit_kerja') ?>
+                                </small>
+                            </div>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('auth/profile') ?>">
+                                    <i class="bi bi-person-circle me-2"></i> My Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="<?= base_url('kwh') ?>">
+                                    <i class="bi bi-clock-history me-2"></i> My History
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <?php if (session()->get('role') === 'admin'): ?>
+                                <li>
+                                    <a class="dropdown-item" href="<?= base_url('settings') ?>">
+                                        <i class="bi bi-sliders me-2"></i> System Settings
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                            <li>
+                                <a class="dropdown-item text-danger" href="<?= base_url('auth/logout') ?>">
+                                    <i class="bi bi-box-arrow-right me-2"></i> Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>
     
     <!-- Main Content -->
     <div class="main-content">

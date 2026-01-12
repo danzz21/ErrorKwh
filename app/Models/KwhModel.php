@@ -8,17 +8,13 @@ class KwhModel extends Model
 {
     protected $table = 'kwh_data';
     protected $primaryKey = 'id';
-    protected $useAutoIncrement = true;
-    protected $returnType = 'array';
-    
     protected $allowedFields = [
         'keterangan', 'arus', 'tegangan', 'cosphi', 'constanta',
         'count', 'duration', 'blink_data', 'selected_blink',
-        'p1_kw', 'p2_kw', 'error_percent', 'class_meter', 'status_final',
-        'photos', 'user_id', 
-        'created_at', 'updated_at'
+        'class_meter', 'p1_kw', 'p2_kw', 'error_percent',
+        'status_final', 'photos', 'user_id', 'created_at',
+        'calculation_mode', 'pr_value', 'ps_value', 'pt_value'
     ];
-    
     protected $useTimestamps = true;
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';

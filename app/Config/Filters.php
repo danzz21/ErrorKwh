@@ -20,9 +20,6 @@ class Filters extends BaseFilters
      * make reading things nicer and simpler.
      *
      * @var array<string, class-string|list<class-string>>
-     *
-     * [filter_name => classname]
-     * or [filter_name => [classname1, classname2, ...]]
      */
     public array $aliases = [
         'csrf'          => CSRF::class,
@@ -34,7 +31,10 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
-         'auth'          => \App\Filters\AuthFilter::class,
+        'auth'          => \App\Filters\AuthFilter::class,
+        'admin'         => \App\Filters\AdminFilter::class,
+        'corsapi'       => \App\Filters\CorsFilter::class, // Ganti nama agar tidak konflik
+        'csrf_except' => \App\Filters\CsrfExcept::class, //
     ];
 
     /**
@@ -45,8 +45,6 @@ class Filters extends BaseFilters
      *
      * Filters set by default provide framework functionality. If removed,
      * those functions will no longer work.
-     *
-     * @see https://codeigniter.com/user_guide/incoming/filters.html#provided-filters
      *
      * @var array{before: list<string>, after: list<string>}
      */
@@ -71,7 +69,7 @@ class Filters extends BaseFilters
     public array $globals = [
         'before' => [
             // 'honeypot',
-            // 'csrf',
+            // 'csrf', // Aktifkan CSRF untuk semua POST request
             // 'invalidchars',
         ],
         'after' => [
@@ -104,5 +102,32 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    public array $filters = [
+        'auth' => [
+            'before' => [
+                'dashboard(/*)?',
+                'kwh(/*)?',
+                'tracking(/*)?',
+                'tasks(/*)?',
+                'auth/profile(/*)?',
+                'reports(/*)?',
+                'export(/*)?',
+                'api(/*)?',
+                'ajax(/*)?'
+            ]
+        ],
+        'admin' => [
+            'before' => [
+                'admin(/*)?',
+                'auth/register(/*)?',
+                'users(/*)?'
+            ]
+        ],
+        'corsapi' => [
+            'before' => [
+                'api(/*)?',
+                'mobile(/*)?'
+            ]
+        ]
+    ];
 }
