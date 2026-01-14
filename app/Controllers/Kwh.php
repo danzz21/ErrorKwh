@@ -20,35 +20,35 @@ class Kwh extends BaseController
         }
     }
 
-private function trackUserActivity()
-{
-    try {
-        $trackingModel = new \App\Models\LocationTrackingModel();
-        $userId = session()->get('user_id');
-        
-        // Cek kapan terakhir tracking (jangan terlalu sering)
-        $lastTrack = $trackingModel->where('user_id', $userId)
-            ->orderBy('timestamp', 'DESC')
-            ->first();
-        
-        // Jika lebih dari 30 menit yang lalu, track lagi
-        if (!$lastTrack || strtotime($lastTrack['timestamp']) < time() - 1800) {
-            $data = [
-                'user_id' => $userId,
-                'latitude' => -6.2088 + (rand(-50, 50) / 1000), // Random sekitar Jakarta
-                'longitude' => 106.8456 + (rand(-50, 50) / 1000),
-                'accuracy' => rand(100, 1000),
-                'address' => 'Sedang mengakses KWH Calculator',
-                'device_info' => 'Web App - KWH Calculator',
-                'timestamp' => date('Y-m-d H:i:s')
-            ];
+    private function trackUserActivity()
+    {
+        try {
+            $trackingModel = new \App\Models\LocationTrackingModel();
+            $userId = session()->get('user_id');
             
-            $trackingModel->insert($data);
+            // Cek kapan terakhir tracking (jangan terlalu sering)
+            $lastTrack = $trackingModel->where('user_id', $userId)
+                ->orderBy('timestamp', 'DESC')
+                ->first();
+            
+            // Jika lebih dari 30 menit yang lalu, track lagi
+            if (!$lastTrack || strtotime($lastTrack['timestamp']) < time() - 1800) {
+                $data = [
+                    'user_id' => $userId,
+                    'latitude' => -6.2088 + (rand(-50, 50) / 1000), // Random sekitar Jakarta
+                    'longitude' => 106.8456 + (rand(-50, 50) / 1000),
+                    'accuracy' => rand(100, 1000),
+                    'address' => 'Sedang mengakses KWH Calculator',
+                    'device_info' => 'Web App - KWH Calculator',
+                    'timestamp' => date('Y-m-d H:i:s')
+                ];
+                
+                $trackingModel->insert($data);
+            }
+        } catch (\Exception $e) {
+            // Silent fail
         }
-    } catch (\Exception $e) {
-        // Silent fail
-    }
-}  
+    }  
     
     public function index()
     {
@@ -80,7 +80,8 @@ private function trackUserActivity()
         
         return view('kwh/index', $data);
     }
-     public function switchMode()
+    
+    public function switchMode()
     {
         $mode = $this->request->getGet('mode');
         if (in_array($mode, ['mode1', 'mode2'])) {
@@ -89,17 +90,23 @@ private function trackUserActivity()
         
         return redirect()->to(base_url('kwh'));
     }
+    
     public function save()
     {
+        // Set timezone ke Asia/Jakarta untuk timestamp yang benar
+        date_default_timezone_set('Asia/Jakarta');
+        
         // Validation
         $validation = \Config\Services::validation();
         
         $mode = session()->get('kwh_mode') ?? 'mode1';
         
-        // Set validation rules berdasarkan mode
+        // Set validation rules berdasarkan mode dengan tambahan nama_pelanggan dan id_pelanggan
         if ($mode === 'mode1') {
             $validation->setRules([
-                'keterangan' => 'required|min_length[3]',
+                'nama_pelanggan' => 'required|min_length[3]|max_length[100]',
+                'id_pelanggan' => 'required|min_length[3]|max_length[50]',
+                'keterangan' => 'permit_empty|min_length[3]|max_length[255]',
                 'arus' => 'required|numeric',
                 'constanta' => 'required|numeric',
                 'class_meter' => 'required',
@@ -108,7 +115,9 @@ private function trackUserActivity()
             ]);
         } else {
             $validation->setRules([
-                'keterangan' => 'required|min_length[3]',
+                'nama_pelanggan' => 'required|min_length[3]|max_length[100]',
+                'id_pelanggan' => 'required|min_length[3]|max_length[50]',
+                'keterangan' => 'permit_empty|min_length[3]|max_length[255]',
                 'class_meter' => 'required',
                 'p1_input' => 'required|numeric', // P1 manual
                 'pr_input' => 'required|numeric', // Pr
@@ -117,10 +126,19 @@ private function trackUserActivity()
             ]);
         }
         
+        // Custom error messages
+        $validation->setRule('nama_pelanggan', 'Nama Pelanggan', 'required', [
+            'required' => 'Nama Pelanggan wajib diisi!'
+        ]);
+        
+        $validation->setRule('id_pelanggan', 'ID Pelanggan', 'required', [
+            'required' => 'ID Pelanggan / No. Meter wajib diisi!'
+        ]);
+        
         if (!$validation->withRequest($this->request)->run()) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', implode(', ', $validation->getErrors()));
+                ->with('error', implode('<br>', $validation->getErrors()));
         }
         
         // Get POST data
@@ -203,24 +221,37 @@ private function trackUserActivity()
         $errorPercent = $this->calculateError($p1, $p2);
         $statusFinal = $this->determineFinalStatus($errorPercent, $classMeter);
         
-        // Prepare data untuk database
+        // Dapatkan timestamp saat ini dengan timezone yang benar
+        $currentDateTime = new \DateTime('now', new \DateTimeZone('Asia/Jakarta'));
+        
+        // Prepare data untuk database (dengan nama_pelanggan dan id_pelanggan)
         $data = array_merge($baseData, [
-            'keterangan' => $post['keterangan'],
+            'nama_pelanggan' => $post['nama_pelanggan'],
+            'id_pelanggan' => $post['id_pelanggan'],
+            'keterangan' => $post['keterangan'] ?? '',
             'class_meter' => $classMeter,
             'p1_kw' => $p1,
             'p2_kw' => $p2,
             'error_percent' => $errorPercent,
             'status_final' => $statusFinal,
             'calculation_mode' => $mode,
-            'photos' => json_encode($photoNames),
+            'photos' => !empty($photoNames) ? json_encode($photoNames) : null,
             'user_id' => session()->get('user_id'),
-            'created_at' => date('Y-m-d H:i:s')
+            'created_at' => $currentDateTime->format('Y-m-d H:i:s') // Gunakan DateTime object
         ]);
+        
+        // Debug: Tambahkan log untuk melihat timestamp
+        log_message('debug', 'Saving KWH data with timestamp: ' . $data['created_at']);
         
         // Save to database
         if ($this->kwhModel->insert($data)) {
+            // Format status untuk pesan sukses
+            $statusMessage = ($statusFinal === 'LUAR_KELAS') ? 'DI LUAR KELAS METER' : $statusFinal;
+            
             return redirect()->to(base_url('kwh'))
-                ->with('success', 'Data berhasil disimpan! Status: ' . $statusFinal);
+                ->with('success', 'Data berhasil disimpan! Status: ' . $statusMessage . 
+                       '<br>Pelanggan: ' . $post['nama_pelanggan'] . 
+                       ' (ID: ' . $post['id_pelanggan'] . ')');
         } else {
             return redirect()->back()
                 ->withInput()
@@ -228,18 +259,26 @@ private function trackUserActivity()
         }
     }
 
- private function determineFinalStatus($errorPercent, $classMeter)
+    /**
+     * Menentukan status final berdasarkan error dan class meter
+     * LOGIKA BARU:
+     * - Error ≠ Kelas Meter = DI LUAR KELAS METER
+     * - Error = Kelas Meter = BAIK (dalam toleransi ±0.01%)
+     */
+    private function determineFinalStatus($errorPercent, $classMeter)
     {
         $absError = abs($errorPercent);
         
-        if ($absError > 5) {
-            return 'BURUK';
-        }
+        // Toleransi untuk floating point comparison (0.01%)
+        $tolerance = 0.01;
         
-        if ($absError < $classMeter) {
-            return 'TIDAK STABIL';
-        } else {
+        // LOGIKA BARU: Error ≠ Kelas = DI LUAR KELAS METER, Error = Kelas = BAIK
+        if (abs($absError - $classMeter) <= $tolerance) {
+            // Error SAMA dengan class meter (dalam toleransi)
             return 'BAIK';
+        } else {
+            // Error TIDAK SAMA dengan class meter (lebih besar ATAU lebih kecil)
+            return 'LUAR_KELAS';
         }
     }
     
@@ -257,148 +296,184 @@ private function trackUserActivity()
         exit();
     }
     
-   public function export()
-{
-    $logs = $this->kwhModel->orderBy('created_at', 'DESC')->findAll();
-    
-    $filename = 'kwh_export_' . date('Ymd_His') . '.csv';
-    
-    header('Content-Type: text/csv');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    
-    $output = fopen('php://output', 'w');
-    
-    // Header CSV
-    fputcsv($output, [
-        'No',
-        'ID',
-        'Tanggal',
-        'Waktu',
-        'Lokasi',
-        'Arus (A)',
-        'Tegangan (V)',
-        'Cos φ',
-        'Constanta',
-        'Kedipan',
-        'Durasi (s)',
-        'Kedipan/detik',
-        'P1 (kW)',
-        'P2 (kW)',
-        'Error (%)',
-        'Status',
-        'Jumlah Foto',
-        'Catatan'
-    ]);
-    
-    // Data
-    $no = 1;
-    foreach ($logs as $log) {
-        // Hitung kedipan per detik
-        $blinkPerSec = ($log['duration'] > 0) ? $log['count'] / $log['duration'] : 0;
+    public function export()
+    {
+        $userId = session()->get('user_id');
+        $role = session()->get('role');
         
-        // Tentukan status
-        $absError = abs($log['error_percent']);
-        if ($absError <= 2) {
-            $status = 'BAIK';
-        } elseif ($absError <= 5) {
-            $status = 'WARNING';
+        // Get data berdasarkan role
+        if ($role === 'admin') {
+            $logs = $this->kwhModel->select('kwh_data.*, users.nama as operator_nama, users.unit_kerja')
+                ->join('users', 'users.id = kwh_data.user_id', 'left')
+                ->orderBy('kwh_data.created_at', 'DESC')
+                ->findAll();
         } else {
-            $status = 'BURUK';
+            $logs = $this->kwhModel->where('user_id', $userId)
+                ->orderBy('created_at', 'DESC')
+                ->findAll();
         }
         
-        // Hitung jumlah foto
-        $photoCount = 0;
-        if (!empty($log['photos']) && $log['photos'] !== 'null') {
-            $photos = json_decode($log['photos'], true);
-            $photoCount = is_array($photos) ? count($photos) : 0;
-        }
+        $filename = 'kwh_export_' . date('Ymd_His') . '.csv';
         
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // Header CSV dengan tambahan Nama Pelanggan dan ID Pelanggan
         fputcsv($output, [
-            $no++,
-            $log['id'],
-            date('d/m/Y', strtotime($log['created_at'])),
-            date('H:i:s', strtotime($log['created_at'])),
-            $log['keterangan'],
-            number_format($log['arus'], 2),
-            number_format($log['tegangan'], 2),
-            number_format($log['cosphi'], 2),
-            number_format($log['constanta'], 0),
-            $log['count'],
-            number_format($log['duration'], 2),
-            number_format($blinkPerSec, 3),
-            number_format($log['p1_kw'], 3),
-            number_format($log['p2_kw'], 3),
-            number_format($log['error_percent'], 2),
-            $status,
-            $photoCount,
-            ''
+            'No',
+            'ID',
+            'Tanggal',
+            'Waktu',
+            'Nama Pelanggan',
+            'ID Pelanggan',
+            'Lokasi',
+            'Operator',
+            'Unit Kerja',
+            'Mode',
+            'Arus (A)',
+            'Tegangan (V)',
+            'Cos φ',
+            'Constanta',
+            'Kedipan',
+            'Durasi (s)',
+            'Kedipan/detik',
+            'P1 (kW)',
+            'P2 (kW)',
+            'Error (%)',
+            'Kelas Meter (%)',
+            'Status',
+            'Jumlah Foto'
         ]);
+        
+        // Data
+        $no = 1;
+        foreach ($logs as $log) {
+            // Hitung kedipan per detik
+            $blinkPerSec = ($log['duration'] > 0) ? $log['count'] / $log['duration'] : 0;
+            
+            // Tentukan status
+            $status = $log['status_final'] ?? 'BELUM_DIHITUNG';
+            
+            // Format status untuk CSV
+            if ($status === 'LUAR_KELAS') {
+                $statusDisplay = 'DI LUAR KELAS METER';
+            } elseif ($status === 'BAIK') {
+                $statusDisplay = 'BAIK';
+            } else {
+                $statusDisplay = $status;
+            }
+            
+            // Mode perhitungan
+            $modeDisplay = (isset($log['calculation_mode']) && $log['calculation_mode'] === 'mode2') ? '3 Phase' : 'Kedipan';
+            
+            // Hitung jumlah foto
+            $photoCount = 0;
+            if (!empty($log['photos']) && $log['photos'] !== 'null') {
+                $photos = json_decode($log['photos'], true);
+                $photoCount = is_array($photos) ? count($photos) : 0;
+            }
+            
+            // Get operator info
+            $operator = isset($log['operator_nama']) ? $log['operator_nama'] : (session()->get('nama') ?? 'Unknown');
+            $unitKerja = isset($log['unit_kerja']) ? $log['unit_kerja'] : '';
+            
+            // Get nama_pelanggan dan id_pelanggan
+            $namaPelanggan = isset($log['nama_pelanggan']) ? $log['nama_pelanggan'] : '-';
+            $idPelanggan = isset($log['id_pelanggan']) ? $log['id_pelanggan'] : '-';
+            
+            fputcsv($output, [
+                $no++,
+                $log['id'],
+                date('d/m/Y', strtotime($log['created_at'])),
+                date('H:i:s', strtotime($log['created_at'])),
+                $namaPelanggan,
+                $idPelanggan,
+                $log['keterangan'],
+                $operator,
+                $unitKerja,
+                $modeDisplay,
+                number_format($log['arus'], 2),
+                number_format($log['tegangan'], 2),
+                number_format($log['cosphi'], 2),
+                number_format($log['constanta'], 0),
+                $log['count'],
+                number_format($log['duration'], 2),
+                number_format($blinkPerSec, 3),
+                number_format($log['p1_kw'], 3),
+                number_format($log['p2_kw'], 3),
+                number_format($log['error_percent'], 2),
+                number_format($log['class_meter'], 1),
+                $statusDisplay,
+                $photoCount
+            ]);
+        }
+        
+        fclose($output);
+        exit();
     }
     
-    fclose($output);
-    exit();
-}
-    
-   public function delete($id)
-{
-    // Delete associated photos
-    $data = $this->kwhModel->find($id);
-    if ($data) {
-        $photos = json_decode($data['photos'], true);
-        if (is_array($photos)) {
-            foreach ($photos as $photo) {
-                $path = WRITEPATH . 'uploads/kwh/' . $photo;
-                if (file_exists($path)) {
-                    unlink($path);
+    public function delete($id)
+    {
+        // Delete associated photos
+        $data = $this->kwhModel->find($id);
+        if ($data) {
+            $photos = json_decode($data['photos'], true);
+            if (is_array($photos)) {
+                foreach ($photos as $photo) {
+                    $path = WRITEPATH . 'uploads/kwh/' . $photo;
+                    if (file_exists($path)) {
+                        unlink($path);
+                    }
                 }
             }
         }
-    }
-    
-    if ($this->kwhModel->delete($id)) {
-        // Set flash message dengan JavaScript untuk auto close
-        session()->setFlashdata('success', 'Data berhasil dihapus');
         
-        // Redirect back to current page dengan anchor
-        return redirect()->to(base_url() . '#riwayat')
-            ->with('success', 'Data berhasil dihapus');
-    } else {
-        return redirect()->to(base_url() . '#riwayat')
-            ->with('error', 'Gagal menghapus data');
-    }
-}
-    
-    public function clearAll()
-{
-    // Delete all photos
-    $uploadPath = WRITEPATH . 'uploads/kwh/';
-    if (is_dir($uploadPath)) {
-        $files = glob($uploadPath . '*');
-        foreach ($files as $file) {
-            if (is_file($file)) {
-                unlink($file);
-            }
+        if ($this->kwhModel->delete($id)) {
+            // Set flash message dengan JavaScript untuk auto close
+            session()->setFlashdata('success', 'Data berhasil dihapus');
+            
+            // Redirect back to current page dengan anchor
+            return redirect()->to(base_url() . '#riwayat')
+                ->with('success', 'Data berhasil dihapus');
+        } else {
+            return redirect()->to(base_url() . '#riwayat')
+                ->with('error', 'Gagal menghapus data');
         }
     }
     
-    // Truncate database table
-    try {
-        $this->kwhModel->truncate();
+    public function clearAll()
+    {
+        // Delete all photos
+        $uploadPath = WRITEPATH . 'uploads/kwh/';
+        if (is_dir($uploadPath)) {
+            $files = glob($uploadPath . '*');
+            foreach ($files as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
+            }
+        }
         
-        // Set success message
-        session()->setFlashdata('success', 'Semua data berhasil dihapus');
-        
-        // Redirect back to current page dengan anchor
-        return redirect()->to(base_url() . '#riwayat')
-            ->with('success', 'Semua data berhasil dihapus');
+        // Truncate database table
+        try {
+            $this->kwhModel->truncate();
             
-    } catch (\Exception $e) {
-        return redirect()->to(base_url() . '#riwayat')
-            ->with('error', 'Gagal menghapus semua data: ' . $e->getMessage());
+            // Set success message
+            session()->setFlashdata('success', 'Semua data berhasil dihapus');
+            
+            // Redirect back to current page dengan anchor
+            return redirect()->to(base_url() . '#riwayat')
+                ->with('success', 'Semua data berhasil dihapus');
+                
+        } catch (\Exception $e) {
+            return redirect()->to(base_url() . '#riwayat')
+                ->with('error', 'Gagal menghapus semua data: ' . $e->getMessage());
+        }
     }
-}
     
-     private function calculateP1_mode1($data)
+    private function calculateP1_mode1($data)
     {
         if (empty($data['count']) || empty($data['duration']) || empty($data['constanta'])) {
             return 0;
@@ -416,7 +491,7 @@ private function trackUserActivity()
         return (3600 * $blinkPerSecond) / $constanta;
     }
     
-     private function calculateP2_mode1($data)
+    private function calculateP2_mode1($data)
     {
         $arus = (float)$data['arus'];
         $tegangan = (float)($data['tegangan'] ?? 220);
@@ -424,7 +499,8 @@ private function trackUserActivity()
         
         return ($tegangan * $arus * $cosphi) / 1000;
     }
-     private function calculateP2_mode2($data)
+    
+    private function calculateP2_mode2($data)
     {
         $arus = (float)$data['arus'];
         
