@@ -19,17 +19,19 @@ class Users extends BaseController
         }
     }
     
-    public function index()
-    {
-        $users = $this->userModel->findAll();
-        
-        $data = [
-            'title' => 'User Management - PLN',
-            'users' => $users
-        ];
-        
-        return view('users/index', $data);
-    }
+   public function index()
+{
+    $users = $this->userModel->orderBy('nama', 'ASC')->findAll();
+    
+    $data = [
+        'title' => 'User Management - PLN',
+        'users' => $users,
+        'user_role' => session()->get('role'),        // TAMBAHKAN
+        'user_nama' => session()->get('nama')         // TAMBAHKAN
+    ];
+    
+    return view('users/index', $data);
+}
     
     public function edit($id)
     {

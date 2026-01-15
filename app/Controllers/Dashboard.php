@@ -18,6 +18,7 @@ class Dashboard extends BaseController
         $this->kwhModel = new KwhModel();
         $this->trackingModel = new LocationTrackingModel();
         
+        // Cek login
         if (!session()->get('isLoggedIn')) {
             return redirect()->to(base_url('auth/login'));
         }
@@ -27,17 +28,23 @@ class Dashboard extends BaseController
     {
         $userId = session()->get('user_id');
         $role = session()->get('role');
+        $nama = session()->get('nama');
+        
+        // Data dasar untuk semua role
+        $data = [
+            'title' => 'Dashboard - PLN',
+            'user_role' => $role,
+            'user_nama' => $nama,
+            'current_date' => date('l, d F Y'),
+            'current_time' => date('H:i:s')
+        ];
         
         // Data untuk admin
         if ($role === 'admin') {
-            $data = $this->getAdminDashboardData();
+            $data = array_merge($data, $this->getAdminDashboardData());
         } else {
-            $data = $this->getUserDashboardData($userId);
+            $data = array_merge($data, $this->getUserDashboardData($userId));
         }
-        
-        $data['title'] = 'Dashboard - PLN';
-        $data['user_role'] = $role;
-        $data['user_nama'] = session()->get('nama');
         
         return view('dashboard/index', $data);
     }
@@ -54,13 +61,14 @@ class Dashboard extends BaseController
             ->where('DATE(created_at)', date('Y-m-d'))
             ->countAllResults();
         
-        // Tracking Data
+        // Tracking Data - online dalam 5 menit terakhir
         $onlineUsers = $this->trackingModel
             ->where('timestamp >=', date('Y-m-d H:i:s', strtotime('-5 minutes')))
+            ->select('user_id')
             ->groupBy('user_id')
             ->countAllResults();
         
-        // Recent Activities
+        // Recent KWH Activities
         $recentKwh = $this->kwhModel
             ->select('kwh_data.*, users.nama')
             ->join('users', 'users.id = kwh_data.user_id')
@@ -88,9 +96,9 @@ class Dashboard extends BaseController
             'total_kwh_data' => $totalKwhData,
             'today_kwh_data' => $todayKwhData,
             'online_users' => $onlineUsers,
-            'recent_kwh' => $recentKwh,
-            'user_stats' => $userStats,
-            'recent_locations' => $recentLocations
+            'recent_kwh' => $recentKwh ?? [],
+            'user_stats' => $userStats ?? [],
+            'recent_locations' => $recentLocations ?? []
         ];
     }
     
@@ -122,7 +130,7 @@ class Dashboard extends BaseController
         return [
             'my_kwh_data' => $myKwhData,
             'today_kwh_data' => $todayKwhData,
-            'recent_activities' => $recentActivities,
+            'recent_activities' => $recentActivities ?? [],
             'last_location' => $lastLocation
         ];
     }
@@ -145,6 +153,7 @@ class Dashboard extends BaseController
                     ->countAllResults(),
                 'online_now' => $this->trackingModel
                     ->where('timestamp >=', date('Y-m-d H:i:s', strtotime('-5 minutes')))
+                    ->select('user_id')
                     ->groupBy('user_id')
                     ->countAllResults()
             ];

@@ -3,15 +3,18 @@
 namespace App\Controllers;
 
 use App\Models\KwhModel;
+use App\Models\UserModel;
 use CodeIgniter\Controller;
 
 class Kwh extends BaseController
 {
     protected $kwhModel;
+    protected $userModel;
     
     public function __construct()
     {
         $this->kwhModel = new KwhModel();
+        $this->userModel = new UserModel();
         helper(['form', 'url', 'text']);
         
         // Auto-track user location saat akses KWH
@@ -35,7 +38,7 @@ class Kwh extends BaseController
             if (!$lastTrack || strtotime($lastTrack['timestamp']) < time() - 1800) {
                 $data = [
                     'user_id' => $userId,
-                    'latitude' => -6.2088 + (rand(-50, 50) / 1000), // Random sekitar Jakarta
+                    'latitude' => -6.2088 + (rand(-50, 50) / 1000),
                     'longitude' => 106.8456 + (rand(-50, 50) / 1000),
                     'accuracy' => rand(100, 1000),
                     'address' => 'Sedang mengakses KWH Calculator',
@@ -48,24 +51,29 @@ class Kwh extends BaseController
         } catch (\Exception $e) {
             // Silent fail
         }
-    }  
+    }
     
+    /**
+     * Halaman utama KWH Calculator
+     */
     public function index()
     {
         $userId = session()->get('user_id');
         $role = session()->get('role');
         
-        // Get mode from session or default to mode1
+        // Get mode dari session atau default ke mode1
         $mode = session()->get('kwh_mode') ?? 'mode1';
         
         // Get data berdasarkan role
         if ($role === 'admin') {
-            $logs = $this->kwhModel->select('kwh_data.*, users.nama as operator_nama, users.unit_kerja')
+            $logs = $this->kwhModel
+                ->select('kwh_data.*, users.nama as operator_nama, users.unit_kerja')
                 ->join('users', 'users.id = kwh_data.user_id', 'left')
                 ->orderBy('kwh_data.created_at', 'DESC')
                 ->findAll();
         } else {
-            $logs = $this->kwhModel->where('user_id', $userId)
+            $logs = $this->kwhModel
+                ->where('user_id', $userId)
                 ->orderBy('created_at', 'DESC')
                 ->findAll();
         }
@@ -81,6 +89,76 @@ class Kwh extends BaseController
         return view('kwh/index', $data);
     }
     
+    /**
+     * View All Data (untuk admin)
+     */
+    public function all()
+    {
+        $role = session()->get('role');
+        
+        // Cek akses admin
+        if ($role !== 'admin') {
+            return redirect()->to(base_url('kwh'))->with('error', 'Hanya admin yang dapat mengakses halaman ini');
+        }
+        
+        $data = [
+            'title' => 'All KWH Data - PLN',
+            'user_role' => $role,
+            'user_nama' => session()->get('nama'),
+            'kwh_data' => $this->kwhModel
+                ->select('kwh_data.*, users.nama as operator_nama, users.nip, users.role, users.unit_kerja')
+                ->join('users', 'users.id = kwh_data.user_id')
+                ->orderBy('kwh_data.created_at', 'DESC')
+                ->findAll()
+        ];
+        
+        return view('kwh/all', $data);
+    }
+    
+    /**
+     * View Detail Data by ID
+     */
+    public function view($id)
+    {
+        $role = session()->get('role');
+        $userId = session()->get('user_id');
+        
+        // Get data
+        $kwh = $this->kwhModel->find($id);
+        
+        if (!$kwh) {
+            return redirect()->back()->with('error', 'Data tidak ditemukan');
+        }
+        
+        // Cek akses
+        if ($role !== 'admin' && $kwh['user_id'] != $userId) {
+            return redirect()->back()->with('error', 'Anda tidak memiliki akses untuk melihat data ini');
+        }
+        
+        // Get user info
+        $user = $this->userModel->find($kwh['user_id']);
+        
+        // Parse photos jika ada
+        $photos = [];
+        if (!empty($kwh['photos']) && $kwh['photos'] !== 'null') {
+            $photos = json_decode($kwh['photos'], true);
+        }
+        
+        $data = [
+            'title' => 'Detail KWH Data - PLN',
+            'user_role' => $role,
+            'user_nama' => session()->get('nama'),
+            'kwh' => $kwh,
+            'user' => $user,
+            'photos' => $photos
+        ];
+        
+        return view('kwh/view', $data);
+    }
+    
+    /**
+     * Switch Mode (Mode 1 / Mode 2)
+     */
     public function switchMode()
     {
         $mode = $this->request->getGet('mode');
@@ -91,17 +169,18 @@ class Kwh extends BaseController
         return redirect()->to(base_url('kwh'));
     }
     
+    /**
+     * Save Data dari form
+     */
     public function save()
     {
-        // Set timezone ke Asia/Jakarta untuk timestamp yang benar
+        // Set timezone ke Asia/Jakarta
         date_default_timezone_set('Asia/Jakarta');
         
-        // Validation
         $validation = \Config\Services::validation();
-        
         $mode = session()->get('kwh_mode') ?? 'mode1';
         
-        // Set validation rules berdasarkan mode dengan tambahan nama_pelanggan dan id_pelanggan
+        // Set validation rules
         if ($mode === 'mode1') {
             $validation->setRules([
                 'nama_pelanggan' => 'required|min_length[3]|max_length[100]',
@@ -119,10 +198,10 @@ class Kwh extends BaseController
                 'id_pelanggan' => 'required|min_length[3]|max_length[50]',
                 'keterangan' => 'permit_empty|min_length[3]|max_length[255]',
                 'class_meter' => 'required',
-                'p1_input' => 'required|numeric', // P1 manual
-                'pr_input' => 'required|numeric', // Pr
-                'ps_input' => 'required|numeric', // Ps
-                'pt_input' => 'required|numeric'  // Pt
+                'p1_input' => 'required|numeric',
+                'pr_input' => 'required|numeric',
+                'ps_input' => 'required|numeric',
+                'pt_input' => 'required|numeric'
             ]);
         }
         
@@ -144,7 +223,7 @@ class Kwh extends BaseController
         // Get POST data
         $post = $this->request->getPost();
         
-        // Handle class meter validation
+        // Validate class meter
         $classMeterValue = $post['class_meter'];
         $allowedClasses = ['1.0', '0.5', '0.2', '1', '0.5', '0.2'];
         $classMeterStr = (string)$classMeterValue;
@@ -181,7 +260,6 @@ class Kwh extends BaseController
         
         // Calculate values berdasarkan mode
         if ($mode === 'mode1') {
-            // Mode 1: Hitung dari kedipan
             $p1 = $this->calculateP1_mode1($post);
             $p2 = $this->calculateP2_mode1($post);
             
@@ -196,15 +274,14 @@ class Kwh extends BaseController
                 'selected_blink' => $post['selected_blink'] ?? 1,
             ];
         } else {
-            // Mode 2: Input manual 3 phase
             $p1 = (float)$post['p1_input'];
             $pr = (float)$post['pr_input'];
             $ps = (float)$post['ps_input'];
             $pt = (float)$post['pt_input'];
-            $p2 = $pr + $ps + $pt; // Total P2 dari 3 phase
+            $p2 = $pr + $ps + $pt;
             
             $baseData = [
-                'arus' => 0, // Tidak digunakan di mode 2
+                'arus' => 0,
                 'tegangan' => 0,
                 'cosphi' => 0,
                 'constanta' => 0,
@@ -212,7 +289,7 @@ class Kwh extends BaseController
                 'duration' => 0,
                 'blink_data' => '[]',
                 'selected_blink' => 0,
-                'pr_value' => $pr, // Simpan nilai terpisah
+                'pr_value' => $pr,
                 'ps_value' => $ps,
                 'pt_value' => $pt
             ];
@@ -221,10 +298,9 @@ class Kwh extends BaseController
         $errorPercent = $this->calculateError($p1, $p2);
         $statusFinal = $this->determineFinalStatus($errorPercent, $classMeter);
         
-        // Dapatkan timestamp saat ini dengan timezone yang benar
         $currentDateTime = new \DateTime('now', new \DateTimeZone('Asia/Jakarta'));
         
-        // Prepare data untuk database (dengan nama_pelanggan dan id_pelanggan)
+        // Prepare data untuk database
         $data = array_merge($baseData, [
             'nama_pelanggan' => $post['nama_pelanggan'],
             'id_pelanggan' => $post['id_pelanggan'],
@@ -237,15 +313,11 @@ class Kwh extends BaseController
             'calculation_mode' => $mode,
             'photos' => !empty($photoNames) ? json_encode($photoNames) : null,
             'user_id' => session()->get('user_id'),
-            'created_at' => $currentDateTime->format('Y-m-d H:i:s') // Gunakan DateTime object
+            'created_at' => $currentDateTime->format('Y-m-d H:i:s')
         ]);
         
-        // Debug: Tambahkan log untuk melihat timestamp
-        log_message('debug', 'Saving KWH data with timestamp: ' . $data['created_at']);
-        
-        // Save to database
+        // Save ke database
         if ($this->kwhModel->insert($data)) {
-            // Format status untuk pesan sukses
             $statusMessage = ($statusFinal === 'LUAR_KELAS') ? 'DI LUAR KELAS METER' : $statusFinal;
             
             return redirect()->to(base_url('kwh'))
@@ -258,30 +330,10 @@ class Kwh extends BaseController
                 ->with('error', 'Gagal menyimpan data ke database');
         }
     }
-
-    /**
-     * Menentukan status final berdasarkan error dan class meter
-     * LOGIKA BARU:
-     * - Error ≠ Kelas Meter = DI LUAR KELAS METER
-     * - Error = Kelas Meter = BAIK (dalam toleransi ±0.01%)
-     */
-    private function determineFinalStatus($errorPercent, $classMeter)
-    {
-        $absError = abs($errorPercent);
-        
-        // Toleransi untuk floating point comparison (0.01%)
-        $tolerance = 0.01;
-        
-        // LOGIKA BARU: Error ≠ Kelas = DI LUAR KELAS METER, Error = Kelas = BAIK
-        if (abs($absError - $classMeter) <= $tolerance) {
-            // Error SAMA dengan class meter (dalam toleransi)
-            return 'BAIK';
-        } else {
-            // Error TIDAK SAMA dengan class meter (lebih besar ATAU lebih kecil)
-            return 'LUAR_KELAS';
-        }
-    }
     
+    /**
+     * View Photo
+     */
     public function viewPhoto($filename)
     {
         $path = WRITEPATH . 'uploads/kwh/' . $filename;
@@ -296,6 +348,9 @@ class Kwh extends BaseController
         exit();
     }
     
+    /**
+     * Export Data (untuk semua data)
+     */
     public function export()
     {
         $userId = session()->get('user_id');
@@ -303,12 +358,14 @@ class Kwh extends BaseController
         
         // Get data berdasarkan role
         if ($role === 'admin') {
-            $logs = $this->kwhModel->select('kwh_data.*, users.nama as operator_nama, users.unit_kerja')
+            $logs = $this->kwhModel
+                ->select('kwh_data.*, users.nama as operator_nama, users.unit_kerja')
                 ->join('users', 'users.id = kwh_data.user_id', 'left')
                 ->orderBy('kwh_data.created_at', 'DESC')
                 ->findAll();
         } else {
-            $logs = $this->kwhModel->where('user_id', $userId)
+            $logs = $this->kwhModel
+                ->where('user_id', $userId)
                 ->orderBy('created_at', 'DESC')
                 ->findAll();
         }
@@ -320,7 +377,7 @@ class Kwh extends BaseController
         
         $output = fopen('php://output', 'w');
         
-        // Header CSV dengan tambahan Nama Pelanggan dan ID Pelanggan
+        // Header CSV
         fputcsv($output, [
             'No',
             'ID',
@@ -350,13 +407,9 @@ class Kwh extends BaseController
         // Data
         $no = 1;
         foreach ($logs as $log) {
-            // Hitung kedipan per detik
             $blinkPerSec = ($log['duration'] > 0) ? $log['count'] / $log['duration'] : 0;
             
-            // Tentukan status
             $status = $log['status_final'] ?? 'BELUM_DIHITUNG';
-            
-            // Format status untuk CSV
             if ($status === 'LUAR_KELAS') {
                 $statusDisplay = 'DI LUAR KELAS METER';
             } elseif ($status === 'BAIK') {
@@ -365,21 +418,16 @@ class Kwh extends BaseController
                 $statusDisplay = $status;
             }
             
-            // Mode perhitungan
             $modeDisplay = (isset($log['calculation_mode']) && $log['calculation_mode'] === 'mode2') ? '3 Phase' : 'Kedipan';
             
-            // Hitung jumlah foto
             $photoCount = 0;
             if (!empty($log['photos']) && $log['photos'] !== 'null') {
                 $photos = json_decode($log['photos'], true);
                 $photoCount = is_array($photos) ? count($photos) : 0;
             }
             
-            // Get operator info
             $operator = isset($log['operator_nama']) ? $log['operator_nama'] : (session()->get('nama') ?? 'Unknown');
             $unitKerja = isset($log['unit_kerja']) ? $log['unit_kerja'] : '';
-            
-            // Get nama_pelanggan dan id_pelanggan
             $namaPelanggan = isset($log['nama_pelanggan']) ? $log['nama_pelanggan'] : '-';
             $idPelanggan = isset($log['id_pelanggan']) ? $log['id_pelanggan'] : '-';
             
@@ -414,6 +462,9 @@ class Kwh extends BaseController
         exit();
     }
     
+    /**
+     * Delete Data
+     */
     public function delete($id)
     {
         // Delete associated photos
@@ -431,20 +482,32 @@ class Kwh extends BaseController
         }
         
         if ($this->kwhModel->delete($id)) {
-            // Set flash message dengan JavaScript untuk auto close
             session()->setFlashdata('success', 'Data berhasil dihapus');
             
-            // Redirect back to current page dengan anchor
-            return redirect()->to(base_url() . '#riwayat')
+            // Redirect dengan anchor riwayat jika dari halaman utama
+            if (strpos($_SERVER['HTTP_REFERER'] ?? '', '#riwayat') !== false) {
+                return redirect()->to(base_url('kwh') . '#riwayat')
+                    ->with('success', 'Data berhasil dihapus');
+            }
+            
+            return redirect()->back()
                 ->with('success', 'Data berhasil dihapus');
         } else {
-            return redirect()->to(base_url() . '#riwayat')
+            return redirect()->back()
                 ->with('error', 'Gagal menghapus data');
         }
     }
     
+    /**
+     * Clear All Data (hanya untuk testing/halaman admin)
+     */
     public function clearAll()
     {
+        // Hanya admin yang bisa clear all
+        if (session()->get('role') !== 'admin') {
+            return redirect()->back()->with('error', 'Akses ditolak');
+        }
+        
         // Delete all photos
         $uploadPath = WRITEPATH . 'uploads/kwh/';
         if (is_dir($uploadPath)) {
@@ -460,16 +523,27 @@ class Kwh extends BaseController
         try {
             $this->kwhModel->truncate();
             
-            // Set success message
-            session()->setFlashdata('success', 'Semua data berhasil dihapus');
-            
-            // Redirect back to current page dengan anchor
-            return redirect()->to(base_url() . '#riwayat')
+            return redirect()->to(base_url('kwh'))
                 ->with('success', 'Semua data berhasil dihapus');
                 
         } catch (\Exception $e) {
-            return redirect()->to(base_url() . '#riwayat')
+            return redirect()->back()
                 ->with('error', 'Gagal menghapus semua data: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Helper Methods
+     */
+    private function determineFinalStatus($errorPercent, $classMeter)
+    {
+        $absError = abs($errorPercent);
+        $tolerance = 0.01;
+        
+        if (abs($absError - $classMeter) <= $tolerance) {
+            return 'BAIK';
+        } else {
+            return 'LUAR_KELAS';
         }
     }
     
@@ -498,30 +572,6 @@ class Kwh extends BaseController
         $cosphi = (float)($data['cosphi'] ?? 0.85);
         
         return ($tegangan * $arus * $cosphi) / 1000;
-    }
-    
-    private function calculateP2_mode2($data)
-    {
-        $arus = (float)$data['arus'];
-        
-        // Untuk demo, kita hitung P2 berdasarkan rumus yang diberikan
-        // Pr = 4.675, Ps = 4.488, Pt = 5.423 (dalam kW)
-        // P2_total = Pr + Ps + Pt = 14.586 kW
-        
-        // Dalam mode 2, kita anggap P2 sudah ditentukan
-        // Atau kita bisa hitung berdasarkan faktor tertentu
-        
-        // CONTOH 1: Jika arus 5A, maka P2 = 14.586 kW (fixed)
-        // return 14.586;
-        
-        // CONTOH 2: Jika arus berubah, kita skala berdasarkan arus
-        // Asumsi: pada arus 5A menghasilkan 14.586 kW
-        // Maka rumus: P2 = (arus / 5) * 14.586
-        
-        $baseCurrent = 5.0; // Arus dasar 5A
-        $basePower = 14.586; // Daya pada arus 5A
-        
-        return ($arus / $baseCurrent) * $basePower;
     }
     
     private function calculateError($p1, $p2)

@@ -22,23 +22,35 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     // Dashboard
     $routes->get('dashboard', 'Dashboard::index');
     $routes->get('dashboard/stats', 'Dashboard::getStats');
+    $routes->get('settings', 'Settings::index');
+$routes->post('settings/update', 'Settings::update');
     
-    // KWH Calculator
+    // KWH Calculator - TAMBAHKAN ROUTES BARU INI
     $routes->get('kwh', 'Kwh::index');
-    $routes->post('kwh/save', 'Kwh::save');
+    $routes->get('kwh/all', 'Kwh::all');                    // NEW: View all data
+    $routes->get('kwh/view/(:num)', 'Kwh::view/$1');        // NEW: View detail by ID
     $routes->get('kwh/export', 'Kwh::export');
+    $routes->get('kwh/export/all', 'Kwh::export');         // NEW: Alias untuk export all
+    $routes->post('kwh/save', 'Kwh::save');
     $routes->get('kwh/delete/(:num)', 'Kwh::delete/$1');
     $routes->get('kwh/clearAll', 'Kwh::clearAll');
+    $routes->get('kwh/switchMode', 'Kwh::switchMode');
     
     // Export PDF
     $routes->get('export/pdf', 'Export::pdf');
     $routes->get('export/pdf/(:num)', 'Export::pdf/$1');
+     $routes->get('export/all', 'Kwh::export');
     
+     $routes->group('reports', ['filter' => 'auth'], function($routes) {
+    $routes->get('/', 'Reports::index');
+    $routes->get('kwh', 'Reports::kwh');
+    $routes->get('tracking', 'Reports::tracking');
+    $routes->get('export', 'Reports::export');
+});
     // Profile
     $routes->get('auth/profile', 'Auth::profile');
     $routes->post('auth/profile', 'Auth::updateProfile');
     
-    $routes->get('kwh/switchMode', 'Kwh::switchMode');
     // ========== TRACKING WEB ==========
     $routes->get('tracking', 'Tracking::index');
     $routes->get('tracking/leaflet', 'Tracking::leaflet');
@@ -46,7 +58,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('tracking/mobile', 'Tracking::mobile');
     $routes->get('tracking/mobile-tracker', 'Tracking::mobileTracker');
     $routes->get('tracking/history', 'Tracking::history');
-    $routes->get('tracking/history/(:num)', 'Tracking::history/$1');
+    $routes->get('tracking/history/(:num)', 'Tracking::history/$1');  // FIXED: This exists
     $routes->get('tracking/getLiveLocations', 'Tracking::getLiveLocations');
     $routes->get('tracking/start', 'Tracking::startTracking');
     $routes->get('tracking/stop', 'Tracking::stopTracking');
@@ -59,14 +71,23 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     // Auto tracking
     $routes->get('tracking/auto/(:num)', 'Tracking::autoTrack/$1');
     $routes->get('tracking/auto/(:num)/(:any)', 'Tracking::autoTrack/$1/$2');
+    
+    // ========== USERS (UNIVERSAL ACCESS) ==========
+    $routes->get('users', 'Users::index');  // Semua user bisa lihat tapi hanya admin bisa edit
 });
 
+// Tambahkan di dalam auth group:
+$routes->group('settings', function($routes) {
+    $routes->get('/', 'Settings::index');
+    $routes->post('update', 'Settings::update');
+    $routes->get('notifications', 'Settings::notifications');
+    $routes->get('appearance', 'Settings::appearance');
+});
 // Admin only routes
 $routes->group('', ['filter' => 'auth:admin'], function($routes) {
     // User Management
     $routes->get('auth/register', 'Auth::register');
     $routes->post('auth/register', 'Auth::processRegister');
-    $routes->get('users', 'Users::index');
     $routes->get('users/edit/(:num)', 'Users::edit/$1');
     $routes->post('users/update/(:num)', 'Users::update/$1');
     $routes->get('users/delete/(:num)', 'Users::delete/$1');

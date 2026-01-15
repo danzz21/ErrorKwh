@@ -77,7 +77,7 @@ class Export extends BaseController
         return $this->generatePdf($html, $filename, 'landscape');
     }
     
-  private function generateSingleOnePage($data, $user)
+ private function generateSingleOnePage($data, $user)
 {
     $photos = [];
     if (!empty($data['photos']) && $data['photos'] !== 'null') {
@@ -88,11 +88,14 @@ class Export extends BaseController
     $absError = abs($errorPercent);
     $classMeter = $data['class_meter'] ?? 1.0;
 
+    // Periksa mode perhitungan
+    $calculationMode = $data['calculation_mode'] ?? 'mode1';
+    
     if ($absError > 5) {
-        $status = 'BURUK';
+        $status = 'DI LUAR KELAS METER ';
         $statusColor = '#dc3545';
     } elseif (abs($absError - $classMeter) > 0.01) {
-        $status = 'DI LUAR KELAS';
+        $status = 'DI LUAR KELAS METER';
         $statusColor = '#ffc107';
     } else {
         $status = 'BAIK';
@@ -102,6 +105,20 @@ class Export extends BaseController
     $operatorName = $user['nama'] ?? 'Operator';
     $operatorNip  = $user['nip'] ?? '-';
     $operatorJob  = $user['jabatan'] ?? '-';
+
+    // Tentukan apakah menampilkan parameter pengukuran atau strip
+    $tegangan = '-';
+    $arus = '-';
+    $cosphi = '-';
+    $constanta = '-';
+    
+    // Hanya tampilkan parameter jika menggunakan mode1 (kedipan)
+    if ($calculationMode === 'mode1') {
+        $tegangan = $data['tegangan'] . ' V';
+        $arus = $data['arus'] . ' A';
+        $cosphi = $data['cosphi'];
+        $constanta = $data['constanta'] . ' imp/kWh';
+    }
 
     return '
 <!DOCTYPE html>
@@ -187,6 +204,12 @@ td[width="50%"]:first-child {
 td[width="50%"]:last-child {
     padding-left: 10px;
 }
+.mode-indicator {
+    font-size: 10px;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 5px;
+}
 </style>
 </head>
 
@@ -208,6 +231,7 @@ td[width="50%"]:last-child {
         <div class="row">Nama : <b>'.$data['nama_pelanggan'].'</b></div>
         <div class="row">ID Pelanggan : <b>'.$data['id_pelanggan'].'</b></div>
         <div class="row">Kelas Meter : <b>'.number_format($classMeter,1).' %</b></div>
+        <div class="row">Mode Perhitungan : <b>'.($calculationMode === 'mode1' ? 'KEDIPAN' : '3 PHASE').'</b></div>
     </div>
 
     <div class="section">
@@ -222,10 +246,11 @@ td[width="50%"]:last-child {
 
     <div class="section">
         <div class="section-title">PARAMETER PENGUKURAN</div>
-        <div class="row">Tegangan : <b>'.$data['tegangan'].' V</b></div>
-        <div class="row">Arus : <b>'.$data['arus'].' A</b></div>
-        <div class="row">Cos φ : <b>'.$data['cosphi'].'</b></div>
-        <div class="row">Konstanta : <b>'.$data['constanta'].' imp/kWh</b></div>
+        '.($calculationMode === 'mode1' ? '' : '<div class="mode-indicator">(Parameter tidak diperlukan untuk mode 3 Phase)</div>').'
+        <div class="row">Tegangan : <b>'.$tegangan.'</b></div>
+        <div class="row">Arus : <b>'.$arus.'</b></div>
+        <div class="row">Cos φ : <b>'.$cosphi.'</b></div>
+        <div class="row">Konstanta : <b>'.$constanta.'</b></div>
     </div>
 
 </td>
@@ -245,7 +270,7 @@ td[width="50%"]:last-child {
         <div style="margin-top:10px; font-size:11px; color:#555;">
             <b>Rumus Error:</b><br>
             <span style="font-family: monospace;">
-                Error (%) = ((P1 : P2) / P2) × 100
+                Error (%) = ((P1 - P2) / P2) × 100
             </span>
         </div>
     </div>
@@ -275,7 +300,6 @@ td[width="50%"]:last-child {
 </body>
 </html>';
 }
-
     
     private function generatePhotoHtml($photos)
     {
@@ -611,7 +635,7 @@ td[width="50%"]:last-child {
                             <div class="chart-percent" style="color: #ffc107;">' . number_format($statistik['percent_warning'], 1) . '%</div>
                         </div>
                         <div class="chart-row">
-                            <div class="chart-label" style="color: #dc3545;">BURUK</div>
+                            <div class="chart-label" style="color: #dc3545;">DILUAR KELAS METER</div>
                             <div class="chart-bar">
                                 <div class="chart-fill" style="width: ' . $statistik['percent_bad'] . '%; background: #dc3545;"></div>
                             </div>
